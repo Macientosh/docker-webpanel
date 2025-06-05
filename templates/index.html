@@ -8,109 +8,179 @@
 </head>
 <body class="bg-light">
 {% extends "base.html" %}
-
 {% block content %}
-    <h1 class="mb-4">Контейнеры на локальной машине</h1>
-    
-    {% if not containers %}
-        <div class="alert alert-info">
-            Нет доступных контейнеров или отсутствует подключение к Docker
-        </div>
-    {% else %}
-        <table class="table table-bordered table-hover">
-            <thead class="table-dark">
-                <tr>
-                    <th>ID</th>
-                    <th>Имя</th>
-                    <th>Образ</th>
-                    <th>Статус</th>
-                    <th>Управление</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for c in containers %}
-                <tr>
-                    <td class="text-truncate" style="max-width: 150px;">{{ c.id }}</td>
-                    <td>{{ c.name }}</td>
-                    <td>{{ c.image }}</td>
-                    <td>
-                        {% if c.status == 'running' %}
-                            <span class="badge bg-success"><i class="bi bi-play-circle-fill me-1"></i>Running</span>
-                        {% elif c.status == 'exited' %}
-                            <span class="badge bg-secondary"><i class="bi bi-stop-circle-fill me-1"></i>Exited</span>
-                        {% else %}
-                            <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle-fill me-1"></i>{{ c.status }}</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <div class="btn-group btn-group-sm" role="group">
-                            <form method="POST" action="/action" class="d-inline">
-                                <input type="hidden" name="container_id" value="{{ c.id }}">
-                                <input type="hidden" name="action" value="start">
-                                <button class="btn btn-success" {% if c.status == 'running' %}disabled{% endif %} title="Start">
-                                    <i class="bi bi-play-fill"></i>
-                                </button>
-                            </form>
-                            <form method="POST" action="/action" class="d-inline">
-                                <input type="hidden" name="container_id" value="{{ c.id }}">
-                                <input type="hidden" name="action" value="stop">
-                                <button class="btn btn-warning" {% if c.status != 'running' %}disabled{% endif %} title="Stop">
-                                    <i class="bi bi-stop-fill"></i>
-                                </button>
-                            </form>
-                            <form method="POST" action="/action" class="d-inline">
-                                <input type="hidden" name="container_id" value="{{ c.id }}">
-                                <input type="hidden" name="action" value="restart">
-                                <button class="btn btn-info" title="Restart">
-                                    <i class="bi bi-arrow-repeat"></i>
-                                </button>
-                            </form>
-                            <button type="button" class="btn btn-danger" 
-                                onclick="showDeleteModal('{{ c.id }}', '{{ c.name }}')" title="Remove">
-                                <i class="bi bi-trash-fill"></i>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% endif %}
 
-    <!-- Модальное окно подтверждения удаления -->
-    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form method="POST" action="/action">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="deleteModalLabel">Подтвердите удаление</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
-                    </div>
-                    <div class="modal-body">
-                        Вы уверены, что хотите удалить контейнер <strong id="modal-container-name"></strong>?
-                    </div>
-                    <input type="hidden" name="container_id" id="modal-container-id">
-                    <input type="hidden" name="action" value="remove">
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                        <button type="submit" class="btn btn-danger">Удалить</button>
-                    </div>
-                </form>
-            </div>
-        </div>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Контейнеры</h1>
+    <div>
+        <a href="{{ url_for('add_server') }}" class="btn btn-outline-primary">Добавить сервер</a>
     </div>
+</div>
+
+<form method="get" action="{{ url_for('index') }}" class="mb-3">
+    <label for="host" class="form-label">Выбрать сервер:</label>
+    <div class="input-group">
+        <select name="host" id="host" class="form-select" onchange="this.form.submit()">
+            <option value="all" {% if selected_host == 'all' %}selected{% endif %}>Все</option>
+            <option value="" {% if not selected_host %}selected{% endif %}>Локальный</option>
+            {% for s in servers %}
+                <option value="{{ s.host }}" {% if s.host == selected_host %}selected{% endif %}>{{ s.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</form>
+
+{% if selected_host == 'all' %}
+  <h4 class="mb-3">Отображаются все сервера</h4>
+{% elif selected_host %}
+  {% set current_server = servers | selectattr("host", "equalto", selected_host) | list | first %}
+  <h4 class="mb-3">Сервер: {{ current_server.name if current_server else selected_host }}</h4>
+{% else %}
+  <h4 class="mb-3">Сервер: Локальный</h4>
+{% endif %}
+
+{% if all_mode %}
+  {% for group in containers_by_server %}
+    <h4 class="mt-4 mb-2">
+      Сервер: {{ group.server_name }}
+      {% if group.server_host %} ({{ group.server_host }}) {% endif %}
+    </h4>
+
+    {% if not group.containers %}
+      <div class="alert alert-info">Нет контейнеров</div>
+    {% else %}
+      <table class="table table-bordered table-hover table-sm">
+        <thead class="table-light">
+          <tr>
+            <th>ID</th><th>Имя</th><th>Образ</th><th>Статус</th><th>Управление</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in group.containers %}
+          <tr>
+            <td class="text-truncate" style="max-width: 150px;">{{ c.id }}</td>
+            <td>{{ c.name }}</td>
+            <td>{{ c.image }}</td>
+            <td>
+              {% if c.status == 'running' %}
+                <span class="badge bg-success">Running</span>
+              {% elif c.status == 'exited' %}
+                <span class="badge bg-secondary">Exited</span>
+              {% else %}
+                <span class="badge bg-warning text-dark">{{ c.status }}</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="btn-group btn-group-sm" role="group">
+                {% for action in ['start', 'stop', 'restart'] %}
+                <form method="POST" action="/action" class="d-inline">
+                  <input type="hidden" name="host" value="{{ group.server_host }}">
+                  <input type="hidden" name="container_id" value="{{ c.id }}">
+                  <input type="hidden" name="action" value="{{ action }}">
+                  <button class="btn btn-{{ 'success' if action=='start' else 'warning' if action=='stop' else 'info' }}"
+                          {% if action == 'start' and c.status == 'running' %}disabled{% endif %}
+                          {% if action == 'stop' and c.status != 'running' %}disabled{% endif %}
+                          title="{{ action.capitalize() }}">
+                    {{ '▶' if action=='start' else '■' if action=='stop' else '↻' }}
+                  </button>
+                </form>
+                {% endfor %}
+                <button type="button" class="btn btn-danger"
+                        onclick="showDeleteModal('{{ c.id }}', '{{ c.name }}', '{{ group.server_host }}')"
+                        title="Remove">✖</button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  {% endfor %}
+{% else %}
+  <table class="table table-bordered table-hover">
+    <thead class="table-dark">
+      <tr>
+        <th>ID</th><th>Имя</th><th>Образ</th><th>Статус</th><th>Управление</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in containers %}
+      <tr>
+        <td class="text-truncate" style="max-width: 150px;">{{ c.id }}</td>
+        <td>{{ c.name }}</td>
+        <td>{{ c.image }}</td>
+        <td>
+          {% if c.status == 'running' %}
+            <span class="badge bg-success">Running</span>
+          {% elif c.status == 'exited' %}
+            <span class="badge bg-secondary">Exited</span>
+          {% else %}
+            <span class="badge bg-warning text-dark">{{ c.status }}</span>
+          {% endif %}
+        </td>
+        <td>
+          <div class="btn-group btn-group-sm" role="group">
+            {% for action in ['start', 'stop', 'restart'] %}
+            <form method="POST" action="/action" class="d-inline">
+              {% if selected_host %}
+                <input type="hidden" name="host" value="{{ selected_host }}">
+              {% endif %}
+              <input type="hidden" name="container_id" value="{{ c.id }}">
+              <input type="hidden" name="action" value="{{ action }}">
+              <button class="btn btn-{{ 'success' if action=='start' else 'warning' if action=='stop' else 'info' }}"
+                      {% if action == 'start' and c.status == 'running' %}disabled{% endif %}
+                      {% if action == 'stop' and c.status != 'running' %}disabled{% endif %}
+                      title="{{ action.capitalize() }}">
+                {{ '▶' if action=='start' else '■' if action=='stop' else '↻' }}
+              </button>
+            </form>
+            {% endfor %}
+            <button type="button" class="btn btn-danger"
+                    onclick="showDeleteModal('{{ c.id }}', '{{ c.name }}', '{{ selected_host or '' }}')"
+                    title="Remove">✖</button>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endif %}
+
+<!-- Модальное окно -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="/action">
+        <div class="modal-header">
+          <h5 class="modal-title" id="deleteModalLabel">Удаление контейнера</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+        </div>
+        <div class="modal-body">
+          Удалить контейнер <strong id="modal-container-name"></strong>?
+        </div>
+        <input type="hidden" name="container_id" id="modal-container-id">
+        <input type="hidden" name="host" id="modal-container-host">
+        <input type="hidden" name="action" value="remove">
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="submit" class="btn btn-danger">Удалить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
-    <script>
-        function showDeleteModal(containerId, containerName) {
-            document.getElementById('modal-container-id').value = containerId;
-            document.getElementById('modal-container-name').innerText = containerName;
-            const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
-            modal.show();
-        }
-    </script>
+<script>
+function showDeleteModal(containerId, containerName, containerHost) {
+    document.getElementById('modal-container-id').value = containerId;
+    document.getElementById('modal-container-name').innerText = containerName;
+    document.getElementById('modal-container-host').value = containerHost || '';
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+}
+</script>
 {% endblock %}
-
 </body>
-

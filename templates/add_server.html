@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-4">Добавить удалённый сервер</h2>
+
+<form method="post" action="{{ url_for('add_server') }}" class="card p-4 shadow-sm">
+  <div class="mb-3">
+    <label class="form-label">Имя сервера</label>
+    <input type="text" class="form-control" name="name" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">SSH пользователь</label>
+    <input type="text" class="form-control" name="username" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">IP / Хост</label>
+    <input type="text" class="form-control" name="host" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Порт</label>
+    <input type="number" class="form-control" name="port" value="22" min="1" max="65535">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Путь к ключу</label>
+    <input type="text" class="form-control" name="key_path" required>
+  </div>
+  <button type="submit" class="btn btn-primary">Добавить</button>
+</form>
+{% endblock %}

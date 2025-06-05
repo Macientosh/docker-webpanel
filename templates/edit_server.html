@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-4">Редактировать сервер</h2>
+
+<form method="post" action="{{ url_for('edit_server', host=server.host) }}" class="card p-4 shadow-sm">
+  <div class="mb-3">
+    <label class="form-label">Имя сервера</label>
+    <input type="text" class="form-control" name="name" value="{{ server.name }}" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Пользователь</label>
+    <input type="text" class="form-control" name="username" value="{{ server.username }}" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Хост</label>
+    <input type="text" class="form-control" name="host" value="{{ server.host }}" readonly>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Порт</label>
+    <input type="number" class="form-control" name="port" value="{{ server.port }}" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Путь к ключу</label>
+    <input type="text" class="form-control" name="key_path" value="{{ server.key_path }}" required>
+  </div>
+  <button type="submit" class="btn btn-primary">Сохранить</button>
+</form>
+{% endblock %}

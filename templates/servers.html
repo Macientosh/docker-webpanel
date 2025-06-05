@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Список серверов</h2>
+
+<a href="{{ url_for('add_server') }}" class="btn btn-success mb-3">Добавить сервер</a>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Имя</th>
+            <th>Хост</th>
+            <th>Пользователь</th>
+            <th>Порт</th>
+            <th>Действия</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for s in servers %}
+        <tr>
+            <td>{{ s.name }}</td>
+            <td>{{ s.host }}</td>
+            <td>{{ s.username }}</td>
+            <td>{{ s.port }}</td>
+            <td>
+            <a href="{{ url_for('edit_server', host=s.host) }}" class="btn btn-warning btn-sm">Редактировать</a>
+            <button type="button" class="btn btn-danger btn-sm"
+                    onclick="showDeleteServerModal('{{ s.host }}', '{{ s.name }}')">
+                Удалить
+            </button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<div class="modal fade" id="deleteServerModal" tabindex="-1" aria-labelledby="deleteServerModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('delete_server') }}">
+        <div class="modal-header">
+          <h5 class="modal-title" id="deleteServerModalLabel">Удалить сервер</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+        </div>
+        <div class="modal-body">
+          Вы уверены, что хотите удалить сервер <strong id="server-name"></strong>?
+        </div>
+        <input type="hidden" name="host" id="server-host">
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="submit" class="btn btn-danger">Удалить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% block scripts %}
+<script>
+  function showDeleteServerModal(host, name) {
+    document.getElementById('server-host').value = host;
+    document.getElementById('server-name').innerText = name;
+    const modal = new bootstrap.Modal(document.getElementById('deleteServerModal'));
+    modal.show();
+  }
+</script>
+{% endblock %}
+{% endblock %}
