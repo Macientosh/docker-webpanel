@@ -7,18 +7,16 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </head>
 <body class="bg-light">
-    <div class="container py-4">
-        <h1 class="mb-4">Контейнеры на локальной машине</h1>
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Закрыть"></button>
-            </div>
-            {% endfor %}
-        {% endif %}
-        {% endwith %}
+{% extends "base.html" %}
+
+{% block content %}
+    <h1 class="mb-4">Контейнеры на локальной машине</h1>
+    
+    {% if not containers %}
+        <div class="alert alert-info">
+            Нет доступных контейнеров или отсутствует подключение к Docker
+        </div>
+    {% else %}
         <table class="table table-bordered table-hover">
             <thead class="table-dark">
                 <tr>
@@ -32,67 +30,78 @@
             <tbody>
                 {% for c in containers %}
                 <tr>
-                    <td>{{ c.id }}</td>
+                    <td class="text-truncate" style="max-width: 150px;">{{ c.id }}</td>
                     <td>{{ c.name }}</td>
                     <td>{{ c.image }}</td>
                     <td>
                         {% if c.status == 'running' %}
-                            <span class="badge bg-success">Running</span>
+                            <span class="badge bg-success"><i class="bi bi-play-circle-fill me-1"></i>Running</span>
                         {% elif c.status == 'exited' %}
-                            <span class="badge bg-secondary">Exited</span>
+                            <span class="badge bg-secondary"><i class="bi bi-stop-circle-fill me-1"></i>Exited</span>
                         {% else %}
-                            <span class="badge bg-warning text-dark">{{ c.status }}</span>
+                            <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle-fill me-1"></i>{{ c.status }}</span>
                         {% endif %}
                     </td>
                     <td>
-                        <form method="POST" action="/action" class="d-inline">
-                            <input type="hidden" name="container_id" value="{{ c.id }}">
-                            <input type="hidden" name="action" value="start">
-                            <button class="btn btn-success btn-sm" {% if c.status == 'running' %}disabled{% endif %}>Start</button>
-                        </form>
-                        <form method="POST" action="/action" class="d-inline">
-                            <input type="hidden" name="container_id" value="{{ c.id }}">
-                            <input type="hidden" name="action" value="stop">
-                            <button class="btn btn-warning btn-sm" {% if c.status != 'running' %}disabled{% endif %}>Stop</button>
-                        </form>
-                        <form method="POST" action="/action" class="d-inline">
-                            <input type="hidden" name="container_id" value="{{ c.id }}">
-                            <input type="hidden" name="action" value="restart">
-                            <button class="btn btn-info btn-sm">Restart</button>
-                        </form>
-                        <button type="button"
-                            class="btn btn-danger btn-sm"
-                            onclick="showDeleteModal('{{ c.id }}', '{{ c.name }}')">
-                            Remove
-                        </button>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <form method="POST" action="/action" class="d-inline">
+                                <input type="hidden" name="container_id" value="{{ c.id }}">
+                                <input type="hidden" name="action" value="start">
+                                <button class="btn btn-success" {% if c.status == 'running' %}disabled{% endif %} title="Start">
+                                    <i class="bi bi-play-fill"></i>
+                                </button>
+                            </form>
+                            <form method="POST" action="/action" class="d-inline">
+                                <input type="hidden" name="container_id" value="{{ c.id }}">
+                                <input type="hidden" name="action" value="stop">
+                                <button class="btn btn-warning" {% if c.status != 'running' %}disabled{% endif %} title="Stop">
+                                    <i class="bi bi-stop-fill"></i>
+                                </button>
+                            </form>
+                            <form method="POST" action="/action" class="d-inline">
+                                <input type="hidden" name="container_id" value="{{ c.id }}">
+                                <input type="hidden" name="action" value="restart">
+                                <button class="btn btn-info" title="Restart">
+                                    <i class="bi bi-arrow-repeat"></i>
+                                </button>
+                            </form>
+                            <button type="button" class="btn btn-danger" 
+                                onclick="showDeleteModal('{{ c.id }}', '{{ c.name }}')" title="Remove">
+                                <i class="bi bi-trash-fill"></i>
+                            </button>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-    </div>
+    {% endif %}
+
     <!-- Модальное окно подтверждения удаления -->
     <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-        <form method="POST" action="/action">
-            <div class="modal-header">
-            <h5 class="modal-title" id="deleteModalLabel">Подтвердите удаление</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST" action="/action">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="deleteModalLabel">Подтвердите удаление</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                    </div>
+                    <div class="modal-body">
+                        Вы уверены, что хотите удалить контейнер <strong id="modal-container-name"></strong>?
+                    </div>
+                    <input type="hidden" name="container_id" id="modal-container-id">
+                    <input type="hidden" name="action" value="remove">
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-danger">Удалить</button>
+                    </div>
+                </form>
             </div>
-            <div class="modal-body">
-            Вы уверены, что хотите удалить контейнер <strong id="modal-container-name"></strong>?
-            </div>
-            <input type="hidden" name="container_id" id="modal-container-id">
-            <input type="hidden" name="action" value="remove">
-            <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-            <button type="submit" class="btn btn-danger">Удалить</button>
-            </div>
-        </form>
         </div>
     </div>
-    </div>
+{% endblock %}
+
+{% block scripts %}
     <script>
         function showDeleteModal(containerId, containerName) {
             document.getElementById('modal-container-id').value = containerId;
@@ -101,5 +110,7 @@
             modal.show();
         }
     </script>
+{% endblock %}
+
 </body>
 
